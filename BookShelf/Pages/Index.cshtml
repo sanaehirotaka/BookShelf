@@ -1,0 +1,15 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+@foreach (var bucket in Model.Options.ShelfBuckets)
+{
+    <strong>@(bucket.Name)</strong>
+    <ul>
+        @foreach (var obj in (await Model.List(bucket.Bucket)).OrderBy(x => Random.Shared.Next()).Take(10).OrderBy(x => x.Name))
+        {
+            <li>@(obj.Name)</li>
+        }
+    </ul>
+}
