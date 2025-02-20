@@ -4,6 +4,7 @@ using BookShelf.Lib.Options;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
 using System.Collections.Concurrent;
+using Object = Google.Apis.Storage.v1.Data.Object;
 
 namespace BookShelf.Lib;
 
@@ -12,7 +13,10 @@ public class GCSService
 {
     private readonly GCSOptions _options; // GCS の設定オプション
 
-    private ConcurrentDictionary<string, Lazy<ValueTask<List<GCSObjectModel>>>> _entries = new();
+    private ConcurrentDictionary<(string Bucket, string Name), Object?> _cache = new();
+
+    private ConcurrentDictionary<string, List<GCSObjectModel>> _entries = new();
+
     public StorageClient Client { get; set; } // GCS クライアント
 
     public GCSService(GCSOptions options)
@@ -31,24 +35,24 @@ public class GCSService
     /// <summary>
     /// GCSバケット内のファイルオブジェクトを非同期的に列挙する。
     /// </summary>
-    public async Task<List<GCSObjectModel>> FileListAsync(string bucket)
+    public List<GCSObjectModel> FileList(string bucket)
     {
-        return await _entries.GetOrAdd(bucket, (bucket) =>
+        return _entries.GetOrAdd(bucket, (bucket) =>
         {
-            return new Lazy<ValueTask<List<GCSObjectModel>>>(() => Client.ListObjectsAsync(bucket).Select(obj => new GCSObjectModel()
+            return ListObjects(bucket).Select(obj => new GCSObjectModel()
             {
                 Bucket = obj.Bucket,
                 FullName = obj.Name,
                 Size = obj.Size ?? 0
-            }).ToListAsync());
-        }).Value;
+            }).ToList();
+        });
     }
 
-    public async Task<GCSObjectModel?> GetCSObjectModel(string id)
+    public GCSObjectModel? GetCSObjectModel(string id)
     {
         foreach (var bucket in _options.ShelfBuckets)
         {
-            var obj = (await FileListAsync(bucket.Bucket)).Find(x => x.Hash == id);
+            var obj = FileList(bucket.Bucket).Find(x => x.Hash == id);
             if (obj != null)
             {
                 return obj;
@@ -57,13 +61,45 @@ public class GCSService
         return null;
     }
 
-    public async Task DirectDownload(string bucket, string name, Stream writeableStream, DownloadObjectOptions? options = null)
+    public bool HasExistObject(string bucket, string name)
     {
-        await Client.DownloadObjectAsync(bucket, name, writeableStream, options);
+        return GetObject(bucket, name) is not null;
     }
 
-    public async Task DirectUpload(string bucket, string name, Stream readableStream)
+    public async Task DownloadAsync(string bucket, string name, Stream writeableStream, DownloadObjectOptions? options = null)
     {
-        await Client.UploadObjectAsync(bucket, name, "application/octet-stream", readableStream);
+        var obj = await Client.DownloadObjectAsync(bucket, name, writeableStream, options);
+        _cache.AddOrUpdate((bucket, name), key => obj, (key, old) => obj);
     }
+
+    public async Task UploadAsync(string bucket, string name, Stream readableStream)
+    {
+        var obj = await Client.UploadObjectAsync(bucket, name, "application/octet-stream", readableStream);
+        _cache.AddOrUpdate((bucket, name), key => obj, (key, old) => obj);
+    }
+
+    // private
+
+    private List<Object> ListObjects(string bucket)
+    {
+        var list = Client.ListObjects(bucket).ToList();
+        list.ForEach(obj => _cache.AddOrUpdate((obj.Bucket, obj.Name), key => obj, (key, old) => obj));
+        return list;
+    }
+
+    private Object? GetObject(string bucket, string name)
+    {
+        return _cache.GetOrAdd((bucket, name), key =>
+        {
+            try
+            {
+                return Client.GetObject(bucket, name);
+            }
+            catch
+            {
+                return null;
+            }
+        });
+    }
+
 }

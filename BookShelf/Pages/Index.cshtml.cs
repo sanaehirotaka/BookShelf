@@ -23,9 +23,9 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    public Task<List<GCSObjectModel>> List(string bucket)
+    public List<GCSObjectModel> List(string bucket)
     {
-        return listService.FileListAsync(bucket);
+        return listService.FileList(bucket);
     }
 
 }

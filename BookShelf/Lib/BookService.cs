@@ -28,13 +28,25 @@ public class BookService
         return new(id, Get(id).Model.Name, GetFileEntries(id).Select(e => new FileEntry(e.Name, e.Length)).ToList());
     }
 
-    public Stream GetThumnail(string id)
+    public async Task<Stream> GetThumnail(string id)
     {
-        var entries = GetFileEntries(id);
-        var coverEntry = entries.Find(e => e.Name.StartsWith("cover", StringComparison.InvariantCultureIgnoreCase)) ?? entries.First();
-
         var thumbData = new MemoryStream();
-        Image.Load(coverEntry.Open()).Resize(THUMB_WIDTH, THUMB_HEIGHT).SaveAsJpeg(thumbData);
+
+        var bucket = _options.CacheBucket;
+        var name = $"{id}.thumb.jpg";
+
+        if (_storageService.HasExistObject(bucket, name))
+        {
+            await _storageService.DownloadAsync(bucket, name, thumbData);
+        }
+        else
+        {
+            var entries = GetFileEntries(id);
+            var coverEntry = entries.Find(e => e.Name.StartsWith("cover", StringComparison.InvariantCultureIgnoreCase)) ?? entries.First();
+            Image.Load(coverEntry.Open()).Resize(THUMB_WIDTH, THUMB_HEIGHT).SaveAsJpeg(thumbData);
+            thumbData.Position = 0;
+            await _storageService.UploadAsync(bucket, name, thumbData);
+        }
         thumbData.Position = 0;
         return thumbData;
     }
@@ -55,7 +67,7 @@ public class BookService
     {
         return _cache.GetOrAdd(id, id =>
         {
-            var obj = _storageService.GetCSObjectModel(id).GetAwaiter().GetResult() ?? throw new InvalidOperationException(id);
+            var obj = _storageService.GetCSObjectModel(id) ?? throw new InvalidOperationException(id);
             var archive = new ZipArchive(new RangeStream(_storageService.Client, obj.Bucket, obj.FullName, 1024 * 512));
             return new ContainerEntry(obj, archive);
         });
