@@ -6,10 +6,14 @@
 @foreach (var bucket in Model.Options.ShelfBuckets)
 {
     <strong>@(bucket.Name)</strong>
-    <ul>
-        @foreach (var obj in (await Model.List(bucket.Bucket)).OrderBy(x => Random.Shared.Next()).Take(10).OrderBy(x => x.Name))
+    <ul id="thumb">
+        @foreach (var obj in Model.List(bucket.Bucket).OrderBy(x => Random.Shared.Next()).Take(10).OrderBy(x => x.Name))
         {
-            <li>@(obj.Name)</li>
+            <li title="@(obj.Name)">
+                <a href="book/@(obj.Hash)">
+                    <img src="api/bookshelf/thumb/@(obj.Hash)" loading="lazy">
+                </a>
+            </li>
         }
     </ul>
 }

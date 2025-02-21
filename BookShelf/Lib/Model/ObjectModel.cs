@@ -19,6 +19,6 @@ public class ObjectModel
 
     private string? _hash;
 
-    public virtual string Hash => _hash ??= Convert.ToBase64String(XxHash128.Hash(Encoding.UTF8.GetBytes(Uri)), Base64FormattingOptions.None)
+    public virtual string Hash => _hash ??= Convert.ToBase64String(XxHash64.Hash(Encoding.UTF8.GetBytes(Uri)), Base64FormattingOptions.None)
         .Replace('+', '-').Replace('/', '_').TrimEnd('=');
 }

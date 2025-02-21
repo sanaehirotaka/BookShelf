@@ -1,0 +1,25 @@
+﻿@page "{id}"
+@model BookModel
+@section Scripts
+{
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script src="~/Pages/Book.cshtml.js" asp-append-version="true"></script>
+    <script>
+        new Book("@(Model.Id)").start();
+    </script>
+}
+<style>
+    html, body {
+        position: relative;
+        margin: 0;
+        padding: 0;
+    }
+</style>
+<div class="swiper">
+    <div class="swiper-wrapper">
+    </div>
+    <div class="swiper-button-next"></div>
+    <div class="swiper-button-prev"></div>
+    <div class="swiper-pagination"></div>
+</div>

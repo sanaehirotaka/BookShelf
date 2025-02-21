@@ -32,55 +32,69 @@ public partial class RangeStream : Stream
     public override long Length => _len ??= (long)(Object.Size ?? 0);
     public override long Position
     {
-        get => _position;
-        set => _position = value;
+        get {
+            return _position;
+        }
+        set
+        {
+            lock (this)
+            {
+                _position = value;
+            }
+        }
     }
     private Object Object => _obj ??= _client.GetObject(_bucket, _name);
 
     public override int Read(byte[] buffer, int offset, int length)
     {
-        if (length <= 0 || _position >= Length)
+        lock(this)
         {
-            return 0;
-        }
-        if (_position >= Length)
-        {
-            return 0;
-        }
-        length = (int)Math.Min(length, Length - _position);
+            if (length <= 0 || _position >= Length)
+            {
+                return 0;
+            }
+            if (_position >= Length)
+            {
+                return 0;
+            }
+            length = (int)Math.Min(length, Length - _position);
 
-        int startChunk = (int)(_position / _chunkSize);
-        int endChunk = (int)((_position + length - 1) / _chunkSize);
-        int totalBytesRead = 0;
-        for (int i = startChunk; i <= endChunk; i++)
-        {
-            byte[] chunk = rangeCache.GetOrAdd(i, chunkIndex => RangeRequest(chunkIndex * _chunkSize, _chunkSize));
-            int chunkOffset = (i == startChunk) ? (int)(_position % _chunkSize) : 0;
-            int bytesToCopy = Math.Min(chunk.Length - chunkOffset, length - totalBytesRead);
-            Array.Copy(chunk, chunkOffset, buffer, offset + totalBytesRead, bytesToCopy);
-            totalBytesRead += bytesToCopy;
+            int startChunk = (int)(_position / _chunkSize);
+            int endChunk = (int)((_position + length - 1) / _chunkSize);
+            int totalBytesRead = 0;
+            for (int i = startChunk; i <= endChunk; i++)
+            {
+                byte[] chunk = rangeCache.GetOrAdd(i, chunkIndex => RangeRequest(chunkIndex * _chunkSize, _chunkSize));
+                int chunkOffset = (i == startChunk) ? (int)(_position % _chunkSize) : 0;
+                int bytesToCopy = Math.Min(chunk.Length - chunkOffset, length - totalBytesRead);
+                Array.Copy(chunk, chunkOffset, buffer, offset + totalBytesRead, bytesToCopy);
+                totalBytesRead += bytesToCopy;
+            }
+            _position += totalBytesRead;
+            return totalBytesRead;
         }
-        _position += totalBytesRead;
-        return totalBytesRead;
     }
 
     public override long Seek(long offset, SeekOrigin origin)
     {
-        switch (origin)
+        lock(this)
         {
-            case SeekOrigin.Begin:
-                _position = offset;
-                break;
-            case SeekOrigin.Current:
-                _position += offset;
-                break;
-            case SeekOrigin.End:
-                _position = Length + offset;
-                break;
+            switch (origin)
+            {
+                case SeekOrigin.Begin:
+                    _position = offset;
+                    break;
+                case SeekOrigin.Current:
+                    _position += offset;
+                    break;
+                case SeekOrigin.End:
+                    _position = Length + offset;
+                    break;
+            }
+            // 範囲外チェック
+            _position = Math.Max(0, Math.Min(_position, Length));
+            return _position;
         }
-        // 範囲外チェック
-        _position = Math.Max(0, Math.Min(_position, Length));
-        return _position;
     }
 
     private byte[] RangeRequest(long start, int length)

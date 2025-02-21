@@ -13,7 +13,6 @@ static internal class ImageExtensions
             Size = new Size(width, height),
             Mode = mode
         }));
-
         return image;
     }
 }
