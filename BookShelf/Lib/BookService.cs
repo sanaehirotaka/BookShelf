@@ -26,10 +26,8 @@ public class BookService
     public BookEntry GetEntry(string id)
     {
         var entry = Get(id);
-        lock (entry)
-        {
-            return new(id, entry.Model.Name, GetFileEntries(entry).Select(e => new FileEntry(e.Name, e.Length)).ToList());
-        }
+        using var archive = new ZipArchive(entry.Source.NewStream());
+        return new(id, entry.Model.Name, GetFileEntries(archive).Select(e => new FileEntry(e.Name, e.Length)).ToList());
     }
 
     public async Task<Stream> GetThumnail(string id)
@@ -44,12 +42,10 @@ public class BookService
         else
         {
             var entry = Get(id);
-            lock (entry)
-            {
-                var entries = GetFileEntries(entry);
-                var coverEntry = entries.Find(e => e.Name.StartsWith("cover", StringComparison.InvariantCultureIgnoreCase)) ?? entries.First();
-                Image.Load(coverEntry.Open()).Resize(THUMB_WIDTH, THUMB_HEIGHT).SaveAsPng(thumbData);
-            }
+            using var archive = new ZipArchive(entry.Source.NewStream());
+            var entries = GetFileEntries(archive);
+            var coverEntry = entries.Find(e => e.Name.StartsWith("cover", StringComparison.InvariantCultureIgnoreCase)) ?? entries.First();
+            Image.Load(coverEntry.Open()).Resize(THUMB_WIDTH, THUMB_HEIGHT).SaveAsPng(thumbData);
             thumbData.Position = 0;
             await _storageService.UploadAsync(bucket, name, thumbData);
         }
@@ -60,20 +56,18 @@ public class BookService
     public Stream GetPage(string id, string page)
     {
         var entry = Get(id);
-        lock(entry)
-        {
-            using var stream = GetFileEntries(entry)
-                .Find(e => e.Name.Equals(page, StringComparison.InvariantCultureIgnoreCase))?.Open() ?? new MemoryStream();
-            var copy = new MemoryStream();
-            stream.CopyTo(copy);
-            copy.Position = 0;
-            return copy;
-        }
+        using var archive = new ZipArchive(entry.Source.NewStream());
+        using var stream = GetFileEntries(archive)
+            .Find(e => e.Name.Equals(page, StringComparison.InvariantCultureIgnoreCase))?.Open() ?? new MemoryStream();
+        var copy = new MemoryStream();
+        stream.CopyTo(copy);
+        copy.Position = 0;
+        return copy;
     }
 
-    private List<ZipArchiveEntry> GetFileEntries(ContainerEntry entry)
+    private List<ZipArchiveEntry> GetFileEntries(ZipArchive archive)
     {
-        return entry.Archive.Entries.OrderBy(e => e.Name)
+        return archive.Entries.OrderBy(e => e.Name)
             .Where(e => e.Name.EndsWith(".jpg", StringComparison.InvariantCultureIgnoreCase) || e.Name.EndsWith(".png", StringComparison.InvariantCultureIgnoreCase) || e.Name.EndsWith(".webp", StringComparison.InvariantCultureIgnoreCase))
             .ToList();
     }
@@ -83,8 +77,8 @@ public class BookService
         return _cache.GetOrAdd(id, id =>
         {
             var obj = _storageService.GetCSObjectModel(id) ?? throw new InvalidOperationException(id);
-            var archive = new ZipArchive(new RangeStream(_storageService.Client, obj.Bucket, obj.FullName, 1024 * 128));
-            return new ContainerEntry(obj, archive);
+            var source = new GCSStreamSource(_storageService.Client, obj.Bucket, obj.FullName, 1024 * 128);
+            return new ContainerEntry(obj, source);
         });
     }
 
@@ -92,5 +86,5 @@ public class BookService
 
     public record FileEntry(string Name, long Size);
 
-    private record ContainerEntry(GCSObjectModel Model, ZipArchive Archive);
+    private record ContainerEntry(GCSObjectModel Model, GCSStreamSource Source);
 }

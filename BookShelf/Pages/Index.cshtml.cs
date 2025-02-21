@@ -18,7 +18,7 @@ public class IndexModel : PageModel
         this.listService = listService;
     }
 
-    public async Task<ActionResult> OnGetAsync()
+    public IActionResult OnGet()
     {
         return Page();
     }
