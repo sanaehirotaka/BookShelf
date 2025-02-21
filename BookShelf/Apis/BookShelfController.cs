@@ -24,7 +24,7 @@ public class BookShelfController : ControllerBase
     }
 
     [HttpGet("{id}/{page}")]
-    //[ResponseCache(Duration = 31536000, Location = ResponseCacheLocation.Any, NoStore = false)]
+    [ResponseCache(Duration = 31536000, Location = ResponseCacheLocation.Any, NoStore = false)]
     public async Task Page(string id, string page)
     {
         if (page.EndsWith(".webp"))
@@ -45,7 +45,7 @@ public class BookShelfController : ControllerBase
 
     [HttpGet("{id}")]
     [Produces("image/png")]
-    //[ResponseCache(Duration = 31536000, Location = ResponseCacheLocation.Any, NoStore = false)]
+    [ResponseCache(Duration = 31536000, Location = ResponseCacheLocation.Any, NoStore = false)]
     public async Task Thumb(string id)
     {
         var stream = await _bookService.GetThumnail(id);

@@ -30,6 +30,18 @@ public class GCSService
         {
             Client = StorageClient.Create(GoogleCredential.FromFile(options.CredentialPath));
         }
+
+        for (var i = 0; i < 3; i++)
+        {
+            try
+            {
+                Client.GetBucket(options.CacheBucket);
+                break;
+            }
+            catch (Exception e)
+            {
+            }
+        }
     }
 
     /// <summary>
