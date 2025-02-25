@@ -7,7 +7,7 @@
 {
     <strong>@(bucket.Name)</strong>
     <ul id="thumb">
-        @foreach (var obj in Model.List(bucket.Location).OrderBy(x => Random.Shared.Next()).Take(10).OrderBy(x => x.Name))
+        @foreach (var obj in Model.List(bucket.Name).OrderBy(x => Random.Shared.Next()).Take(10).OrderBy(x => x.Name))
         {
             <li title="@(obj.Name)">
                 <a href="book/@(obj.Id)">

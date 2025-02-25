@@ -5,8 +5,6 @@ namespace BookShelf.Lib;
 [Singleton]
 public class Options
 {
-    public string? CredentialPath { get; init; }
-
     public string CacheLocation { get; init; } = default!;
 
     public List<ShelfLocation> ShelfLocations { get; init; } = [];
