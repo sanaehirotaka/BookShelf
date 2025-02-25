@@ -24,7 +24,7 @@ public class GCSService
         _options = options;
         if (string.IsNullOrEmpty(options.CredentialPath))
         {
-            Client = StorageClient.Create(GoogleCredential.GetApplicationDefault());
+            Client = StorageClient.Create();
         }
         else
         {
