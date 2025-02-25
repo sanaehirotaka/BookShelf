@@ -26,26 +26,27 @@ public class GCSStreamSource
 
     private class GCSRangeStream : Stream
     {
-        private readonly LRUCache<int, byte[]> rangeCache;
+        private readonly LRUCache<int, byte[]> _rangeCache;
         private readonly StorageClient _client;
         private readonly Object _obj;
         private readonly int _chunkSize;
 
-        private long? _len;
+        private long _len;
         private long _position = 0;
 
         public GCSRangeStream(LRUCache<int, byte[]> rangeCache, StorageClient client, Object obj, int chunkSize)
         {
-            this.rangeCache = rangeCache;
+            _rangeCache = rangeCache;
             _client = client;
             _obj = obj;
             _chunkSize = chunkSize;
+            _len = (long)(_obj.Size ?? 0);
         }
 
         public override bool CanRead => true;
         public override bool CanSeek => true;
         public override bool CanWrite => false;
-        public override long Length => _len ??= (long)(_obj.Size ?? 0);
+        public override long Length => _len;
         public override long Position { get => _position; set => _position = value; }
 
         public override int Read(byte[] buffer, int offset, int length)
@@ -65,7 +66,7 @@ public class GCSStreamSource
             int totalBytesRead = 0;
             for (int i = startChunk; i <= endChunk; i++)
             {
-                byte[] chunk = rangeCache.GetOrAdd(i, chunkIndex => RangeRequest(chunkIndex * _chunkSize, _chunkSize));
+                byte[] chunk = _rangeCache.GetOrAdd(i, chunkIndex => RangeRequest(chunkIndex * _chunkSize, _chunkSize));
                 int chunkOffset = i == startChunk ? (int)(_position % _chunkSize) : 0;
                 int bytesToCopy = Math.Min(chunk.Length - chunkOffset, length - totalBytesRead);
                 Array.Copy(chunk, chunkOffset, buffer, offset + totalBytesRead, bytesToCopy);
@@ -102,13 +103,22 @@ public class GCSStreamSource
                 // 空の配列を返す
                 return Array.Empty<byte>();
             }
-            using var stream = new MemoryStream();
-            _client.DownloadObject(_obj.Bucket, _obj.Name, stream, new()
+            for (int i = 0; i < 3; i++)
             {
-                ChunkSize = Math.Min(_chunkSize, CHUNK_SIZE),
-                Range = new(start, end)
-            });
-            return stream.ToArray();
+                try
+                {
+                    using var stream = new MemoryStream();
+                    _client.DownloadObject(_obj.Bucket, _obj.Name, stream, new()
+                    {
+                        ChunkSize = Math.Min(_chunkSize, CHUNK_SIZE),
+                        Range = new(start, end)
+                    });
+                    return stream.ToArray();
+                }
+                catch { }
+            }
+            // 空の配列を返す
+            return Array.Empty<byte>();
         }
 
         public override void SetLength(long value) => throw new NotSupportedException();

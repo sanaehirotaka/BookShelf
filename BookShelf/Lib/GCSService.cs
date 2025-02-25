@@ -8,7 +8,7 @@ using Object = Google.Apis.Storage.v1.Data.Object;
 
 namespace BookShelf.Lib;
 
-[Singleton]
+[Scoped]
 public class GCSService
 {
     private readonly GCSOptions _options; // GCS の設定オプション
@@ -29,18 +29,6 @@ public class GCSService
         else
         {
             Client = StorageClient.Create(GoogleCredential.FromFile(options.CredentialPath));
-        }
-
-        for (var i = 0; i < 3; i++)
-        {
-            try
-            {
-                Client.GetBucket(options.CacheBucket);
-                break;
-            }
-            catch (Exception e)
-            {
-            }
         }
     }
 
@@ -94,7 +82,9 @@ public class GCSService
 
     private List<Object> ListObjects(string bucket)
     {
-        var list = Client.ListObjects(bucket).ToList();
+        var list = Client.ListObjects(bucket)
+            .Where(o => o.Size != null)
+            .ToList();
         list.ForEach(obj => _cache.AddOrUpdate((obj.Bucket, obj.Name), key => obj, (key, old) => obj));
         return list;
     }

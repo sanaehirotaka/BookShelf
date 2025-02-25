@@ -6,7 +6,7 @@ using System.IO.Compression;
 
 namespace BookShelf.Lib;
 
-[Singleton]
+[Scoped]
 public class BookService
 {
     private const int THUMB_WIDTH = (int)(148 * 2d);
@@ -32,25 +32,33 @@ public class BookService
 
     public async Task<Stream> GetThumnail(string id)
     {
-        var thumbData = new MemoryStream();
-        var bucket = _options.CacheBucket;
-        var name = $"{id}.thumb.png";
-        if (_storageService.HasExistObject(bucket, name))
+        for (int i = 0; i < 3; i++)
         {
-            await _storageService.DownloadAsync(bucket, name, thumbData);
+            try
+            {
+                var thumbData = new MemoryStream();
+                var bucket = _options.CacheBucket;
+                var name = $"{id}.thumb.png";
+                if (_storageService.HasExistObject(bucket, name))
+                {
+                    await _storageService.DownloadAsync(bucket, name, thumbData);
+                }
+                else
+                {
+                    var entry = Get(id);
+                    using var archive = new ZipArchive(entry.Source.NewStream());
+                    var entries = GetFileEntries(archive);
+                    var coverEntry = entries.Find(e => e.Name.StartsWith("cover", StringComparison.InvariantCultureIgnoreCase)) ?? entries.First();
+                    Image.Load(coverEntry.Open()).Resize(THUMB_WIDTH, THUMB_HEIGHT).SaveAsPng(thumbData);
+                    thumbData.Position = 0;
+                    await _storageService.UploadAsync(bucket, name, thumbData);
+                }
+                thumbData.Position = 0;
+                return thumbData;
+            }
+            catch { }
         }
-        else
-        {
-            var entry = Get(id);
-            using var archive = new ZipArchive(entry.Source.NewStream());
-            var entries = GetFileEntries(archive);
-            var coverEntry = entries.Find(e => e.Name.StartsWith("cover", StringComparison.InvariantCultureIgnoreCase)) ?? entries.First();
-            Image.Load(coverEntry.Open()).Resize(THUMB_WIDTH, THUMB_HEIGHT).SaveAsPng(thumbData);
-            thumbData.Position = 0;
-            await _storageService.UploadAsync(bucket, name, thumbData);
-        }
-        thumbData.Position = 0;
-        return thumbData;
+        return new MemoryStream();
     }
 
     public Stream GetPage(string id, string page)

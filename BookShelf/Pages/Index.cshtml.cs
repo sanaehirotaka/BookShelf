@@ -8,14 +8,14 @@ namespace BookShelf.Pages;
 
 public class IndexModel : PageModel
 {
-    private readonly GCSService listService;
+    private readonly GCSService _listService;
 
     public GCSOptions Options { get; }
 
     public IndexModel(GCSOptions options, GCSService listService)
     {
         Options = options;
-        this.listService = listService;
+        _listService = listService;
     }
 
     public IActionResult OnGet()
@@ -25,7 +25,9 @@ public class IndexModel : PageModel
 
     public List<GCSObjectModel> List(string bucket)
     {
-        return listService.FileList(bucket);
+        return _listService.FileList(bucket)
+            .Where(o => o.Name.EndsWith(".zip") || o.Name.EndsWith(".cbz"))
+            .ToList();
     }
 
 }
