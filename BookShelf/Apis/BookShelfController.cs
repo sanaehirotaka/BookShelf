@@ -18,7 +18,7 @@ public class BookShelfController : ControllerBase
     [Produces("application/json")]
     [ResponseCache(Duration = 31536000, Location = ResponseCacheLocation.Any, NoStore = false)]
 
-    public BookService.BookEntry List(string id)
+    public BookService.BookEntry? List(string id)
     {
         return _bookService.GetEntry(id);
     }
@@ -39,7 +39,7 @@ public class BookShelfController : ControllerBase
         {
             Response.ContentType = "image/png";
         }
-        Response.ContentLength = _bookService.GetEntry(id).Files.Single(f => f.Name == page).Size;
+        Response.ContentLength = _bookService.GetEntry(id)!.Files.Single(f => f.Name == page).Size;
         await _bookService.GetPage(id, page).CopyToAsync(Response.Body);
     }
 
@@ -48,7 +48,7 @@ public class BookShelfController : ControllerBase
     [ResponseCache(Duration = 31536000, Location = ResponseCacheLocation.Any, NoStore = false)]
     public async Task Thumb(string id)
     {
-        var stream = await _bookService.GetThumnail(id);
+        var stream = _bookService.GetThumnail(id);
         Response.ContentLength = stream.Length;
         await stream.CopyToAsync(Response.Body);
     }

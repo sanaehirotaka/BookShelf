@@ -1,6 +1,4 @@
 using BookShelf.Lib;
-using BookShelf.Lib.Model;
-using BookShelf.Lib.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -8,14 +6,14 @@ namespace BookShelf.Pages;
 
 public class IndexModel : PageModel
 {
-    private readonly GCSService _listService;
+    private readonly BookService _bookService;
 
-    public GCSOptions Options { get; }
+    public Options Options { get; }
 
-    public IndexModel(GCSOptions options, GCSService listService)
+    public IndexModel(Options options, BookService listService)
     {
         Options = options;
-        _listService = listService;
+        _bookService = listService;
     }
 
     public IActionResult OnGet()
@@ -23,9 +21,9 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    public List<GCSObjectModel> List(string bucket)
+    public List<BookService.ObjectEntry> List(string bucket)
     {
-        return _listService.FileList(bucket)
+        return _bookService.GetObjects(bucket)
             .Where(o => o.Name.EndsWith(".zip") || o.Name.EndsWith(".cbz"))
             .ToList();
     }
