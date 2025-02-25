@@ -23,9 +23,7 @@ public class IndexModel : PageModel
 
     public List<BookService.ObjectEntry> List(string bucket)
     {
-        return _bookService.GetObjects(bucket)
-            .Where(o => o.Name.EndsWith(".zip") || o.Name.EndsWith(".cbz"))
-            .ToList();
+        return _bookService.GetObjects(bucket);
     }
 
 }
