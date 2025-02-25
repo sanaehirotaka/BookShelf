@@ -21,6 +21,22 @@ body {
   margin-bottom: 60px;
 }
 
+dialog {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 0;
+}
+dialog > div {
+    padding: 2em;
+}
+dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.5); /* ”¼“§–¾‚Ì”wŒi */
+}
+.buttons {
+    margin-top: 0.2em;
+    text-align: center;
+}
+
 #thumb li {
     display: inline-block;
     width: 210px;
@@ -51,6 +67,56 @@ body {
     width: 100%;
     height: 100%;
     object-fit: contain;
+}
+
+label, button {
+    display: inline-block;
+    padding: 0.25rem 0.7rem;
+    border: 0;
+    margin: 0.5rem;
+    outline: 0;
+    text-align: center;
+    text-decoration: none;
+    vertical-align: middle;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: normal;
+    line-height: 1.5;
+}
+
+.toolbar {
+    z-index: 1;
+    position: absolute;
+    top: 0;
+    right: 0;
+    margin: 0.25rem;
+}
+
+.toolbar input[type=checkbox] {
+    display: none;
+}
+
+.list {
+    display: none;
+}
+
+.open:has(input[type="checkbox"]:checked) ~ .list {
+    display: inline-block;
+}
+
+.delete {
+    color: white;
+    background-color: #dc3545;
+}
+.delete:hover {
+    background-color: #bb2d3b;
+}
+.move {
+    color: white;
+    background-color: #198754;
+}
+.move:hover {
+    background-color: #157347;
 }
 
 .swiper {

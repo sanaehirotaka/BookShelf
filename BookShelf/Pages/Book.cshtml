@@ -6,7 +6,9 @@
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script src="~/Pages/Book.cshtml.js" asp-append-version="true"></script>
     <script>
-        new Book("@(Model.Id)").start();
+        const book = new Book("@(Model.Id)");
+        book.startSwiper();
+        book.setup();
     </script>
 }
 <style>
@@ -23,3 +25,18 @@
     <div class="swiper-button-prev"></div>
     <div class="swiper-pagination"></div>
 </div>
+<div class="toolbar">
+    <span class="open">
+        <label><input type="checkbox">::</label>
+    </span>
+    <span class="list">
+        <button class="delete">削除</button>
+        <button class="move">移動</button>
+    </span>
+</div>
+<dialog id="confirm">
+    <div>
+        <div class="content"></div>
+        <div class="buttons"></div>
+    </div>
+</dialog>
