@@ -1,5 +1,7 @@
 ﻿@page "{id}"
+@using BookShelf.Lib
 @model BookModel
+@inject Options options
 @section Scripts
 {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
@@ -8,7 +10,7 @@
     <script>
         const book = new Book("@(Model.Id)");
         book.startSwiper();
-        book.setup();
+        book.setup(@(Json.Serialize(options.ShelfLocations.Select(s => s.Name).ToList())));
     </script>
 }
 <style>
@@ -27,7 +29,7 @@
 </div>
 <div class="toolbar">
     <span class="open">
-        <label><input type="checkbox">::</label>
+        <label><input type="checkbox">…</label>
     </span>
     <span class="list">
         <button class="delete">削除</button>

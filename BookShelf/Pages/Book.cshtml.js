@@ -1,6 +1,7 @@
 ﻿
 class Book {
     #id;
+    #list;
     #swiper;
 
     constructor(id) {
@@ -9,8 +10,8 @@ class Book {
 
     async startSwiper() {
         const id = this.#id;
-        const list = await (await fetch(`/api/bookshelf/list/${id}`)).json();
-        const pages = list.files.map(({ name }) => name);
+        this.#list = await (await fetch(`/api/bookshelf/list/${id}`)).json();
+        const pages = this.#list.files.map(({ name }) => name);
         this.#swiper = new Swiper('.swiper', {
             // Optional parameters
             loop: false, // ループを無効にする
@@ -45,13 +46,39 @@ class Book {
         });
     }
 
-    async setup() {
-
+    async setup(shelfs) {
         document.querySelector(".delete").addEventListener("click", async e => {
-            await new Dialog("このファイルを削除しますか？").show();
+            const ret = await new Dialog(`[${this.#list.name}]を削除しますか？`).show();
+            if (ret == "OK") {
+                await fetch(`/api/bookshelf/delete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id: this.#id
+                    })
+                });
+                document.location.href = `/`;
+            }
         });
         document.querySelector(".move").addEventListener("click", async e => {
-            await new Dialog("このファイルを移動しますか？").show();
+            const ret = await new Dialog(`[${this.#list.name}]の移動先を選択してください`, {
+                "buttons": [...shelfs.filter(s => s != this.#list.shelf), "キャンセル"]
+            }).show();
+            if (ret != "キャンセル") {
+                await fetch(`/api/bookshelf/move`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id: this.#id,
+                        after: ret
+                    })
+                });
+                document.location.href = `/`;
+            }
         });
     }
 }

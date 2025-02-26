@@ -52,4 +52,30 @@ public class BookShelfController : ControllerBase
         Response.ContentLength = stream.Length;
         await stream.CopyToAsync(Response.Body);
     }
+
+
+    [HttpPost]
+    [Produces("application/json")]
+    public async Task<DeleteResponse> Delete([FromBody] DeleteRequest body)
+    {
+        _bookService.Delete(body.Id);
+        return new(true);
+    }
+
+    public record DeleteRequest(string Id);
+
+    public record DeleteResponse(bool Sucsess);
+
+    [HttpPost]
+    [Produces("application/json")]
+    public async Task<MoveResponse> Move([FromBody] MoveRequest body)
+    {
+        _bookService.Move(body.Id, body.After);
+        return new(true);
+    }
+
+    public record MoveRequest(string Id, string After);
+
+    public record MoveResponse(bool Sucsess);
+
 }

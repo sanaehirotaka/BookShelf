@@ -33,7 +33,7 @@ dialog::backdrop {
     background-color: rgba(0, 0, 0, 0.5); /* ”¼“§–¾‚Ì”wŒi */
 }
 .buttons {
-    margin-top: 0.2em;
+    margin-top: 0.5em;
     text-align: center;
 }
 
@@ -72,7 +72,7 @@ dialog::backdrop {
 label, button {
     display: inline-block;
     padding: 0.25rem 0.7rem;
-    border: 0;
+    border: 1px solid transparent;
     margin: 0.5rem;
     outline: 0;
     text-align: center;
@@ -82,6 +82,11 @@ label, button {
     font-size: 1rem;
     font-weight: normal;
     line-height: 1.5;
+}
+
+button {
+    border: 1px solid lightgray;
+    border-radius: 3px;
 }
 
 .toolbar {
