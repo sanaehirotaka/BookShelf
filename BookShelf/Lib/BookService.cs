@@ -102,9 +102,22 @@ public class BookService
         {
             return new MemoryStream();
         }
-        using var stream = zipEntry.Open();
         var copy = new MemoryStream();
-        stream.CopyTo(copy);
+        if (zipEntry.Length >= (1024 * 312))
+        {
+            using var stream = zipEntry.Open();
+            var img = Image.Load(stream);
+            if (img.Width > 1080 || img.Height > 2400)
+            {
+                img = img.Resize(Math.Min(img.Width, 1080), Math.Min(img.Height, 2400));
+            }
+            img.SaveAsJpeg(copy);
+        }
+        else
+        {
+            using var stream = zipEntry.Open();
+            stream.CopyTo(copy);
+        }
         copy.Position = 0;
         return copy;
     }
