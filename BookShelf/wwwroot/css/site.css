@@ -21,6 +21,16 @@ body {
   margin-bottom: 60px;
 }
 
+html, body {
+    margin: 0;
+    padding: 0;
+}
+
+ul, li {
+    margin: 0;
+    padding: 0;
+}
+
 dialog {
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -39,7 +49,7 @@ dialog::backdrop {
 
 #thumb li {
     display: inline-block;
-    width: 210px;
+    width: 170px;
     height: 210px;
     position: relative;
     border-radius: 3px;
