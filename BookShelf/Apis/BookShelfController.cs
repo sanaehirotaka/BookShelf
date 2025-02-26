@@ -27,20 +27,14 @@ public class BookShelfController : ControllerBase
     [ResponseCache(Duration = 31536000, Location = ResponseCacheLocation.Any, NoStore = false)]
     public async Task Page(string id, string page)
     {
-        if (page.EndsWith(".webp"))
+        var entry = _bookService.GetPage(id, page);
+        if (entry == null)
         {
-            Response.ContentType = "image/webp";
+            return;
         }
-        else if (page.EndsWith(".jpg"))
-        {
-            Response.ContentType = "image/jpeg";
-        }
-        else if (page.EndsWith(".png"))
-        {
-            Response.ContentType = "image/png";
-        }
-        Response.ContentLength = _bookService.GetEntry(id)!.Files.Single(f => f.Name == page).Size;
-        await _bookService.GetPage(id, page).CopyToAsync(Response.Body);
+        Response.ContentType = entry.MimeType;
+        Response.ContentLength = entry.Size;
+        await entry.Stream.CopyToAsync(Response.Body);
     }
 
     [HttpGet("{id}")]

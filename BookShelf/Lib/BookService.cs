@@ -1,8 +1,9 @@
 ﻿using BookShelf.Lib.Inject;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Processing.Processors.Quantization;
 using System.IO.Compression;
 using System.IO.Hashing;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace BookShelf.Lib;
@@ -12,6 +13,7 @@ public class BookService
 {
     private const int THUMB_WIDTH = (int)(148 * 2d);
     private const int THUMB_HEIGHT = (int)(210 * 2d);
+    private const int MAX_PAGE_SIZE = 1024 * 256;
 
     private IDictionary<string, IDictionary<string, ObjectEntry>> _shelfCache;
 
@@ -89,38 +91,143 @@ public class BookService
         _shelfCache = Cache();
     }
 
-    public Stream GetPage(string id, string page)
+    public PageEntry? GetPage(string id, string page)
     {
+
         var obj = GetObject(id);
         if (obj == null)
         {
-            return new MemoryStream();
+            return null;
         }
         using var archive = new ZipArchive(new FileStream(obj.FullName, FileMode.Open, FileAccess.Read));
         var zipEntry = archive.GetEntry(page);
         if (zipEntry == null)
         {
-            return new MemoryStream();
+            return null;
         }
-        var copy = new MemoryStream();
-        if (zipEntry.Length >= (1024 * 312))
+        string mimeType = "application/octed-stream";
+
+        if (page.EndsWith(".webp"))
         {
-            using var stream = zipEntry.Open();
-            var img = Image.Load(stream);
-            if (img.Width > 1080 || img.Height > 2400)
+            mimeType = "image/webp";
+        }
+        else if (page.EndsWith(".jpg"))
+        {
+            mimeType = "image/jpeg";
+        }
+        else if (page.EndsWith(".png"))
+        {
+            mimeType = "image/png";
+        }
+
+        Stream stream;
+
+        if (zipEntry.Length > MAX_PAGE_SIZE)
+        {
+            (stream, mimeType) = Stage0(zipEntry);
+
+            if (zipEntry.Length < stream.Length && stream.Length > MAX_PAGE_SIZE)
             {
-                img = img.Resize(Math.Min(img.Width, 1080), Math.Min(img.Height, 2400));
+                (stream, mimeType) = Stage1(zipEntry);
             }
-            img.SaveAsJpeg(copy);
+
+            if (zipEntry.Length < stream.Length && stream.Length > MAX_PAGE_SIZE)
+            {
+                (stream, mimeType) = Stage2(zipEntry);
+            }
+
+            if (zipEntry.Length < stream.Length && stream.Length > MAX_PAGE_SIZE)
+            {
+                (stream, mimeType) = Stage3(zipEntry);
+            }
         }
         else
         {
-            using var stream = zipEntry.Open();
-            stream.CopyTo(copy);
+            stream = new MemoryStream();
+            using var pageStream = zipEntry.Open();
+            pageStream.CopyTo(stream);
         }
-        copy.Position = 0;
-        return copy;
+        stream.Position = 0;
+        return new(zipEntry.Name, mimeType, stream.Length, stream);
     }
+
+    private (MemoryStream Stream, string MimeType) Stage0(ZipArchiveEntry entry)
+    {
+        using var stream = entry.Open();
+        var img = Image.Load(stream);
+
+        if (img.Width > 1080 || img.Height > 2400)
+        {
+            img = img.Resize(Math.Min(img.Width, 1080), Math.Min(img.Height, 2400));
+        }
+        var newImage = new MemoryStream();
+        img.SaveAsWebp(newImage, new()
+        {
+            SkipMetadata = true,
+            Quality = 75
+        });
+        newImage.Position = 0;
+        return (newImage, "image/webp");
+    }
+
+    private (MemoryStream Stream, string MimeType) Stage1(ZipArchiveEntry entry)
+    {
+        using var stream = entry.Open();
+        var img = Image.Load(stream);
+
+        if (img.Width > 1080 || img.Height > 2400)
+        {
+            img = img.Resize(Math.Min(img.Width, 1080), Math.Min(img.Height, 2400));
+        }
+        var newImage = new MemoryStream();
+        img.SaveAsWebp(newImage, new()
+        {
+            SkipMetadata = true,
+            Quality = 60
+        });
+        newImage.Position = 0;
+        return (newImage, "image/webp");
+    }
+
+    private (MemoryStream Stream, string MimeType) Stage2(ZipArchiveEntry entry)
+    {
+        using var stream = entry.Open();
+        var img = Image.Load(stream);
+
+        if (img.Width > 810 || img.Height > 1800)
+        {
+            img = img.Resize(Math.Min(img.Width, 810), Math.Min(img.Height, 1800));
+        }
+        var newImage = new MemoryStream();
+        img.SaveAsWebp(newImage, new()
+        {
+            SkipMetadata = true,
+            Quality = 60
+        });
+        newImage.Position = 0;
+        return (newImage, "image/webp");
+    }
+
+    private (MemoryStream Stream, string MimeType) Stage3(ZipArchiveEntry entry)
+    {
+        using var stream = entry.Open();
+        var img = Image.Load(stream);
+
+        if (img.Width > 810 || img.Height > 1800)
+        {
+            img = img.Resize(Math.Min(img.Width, 810), Math.Min(img.Height, 1800));
+        }
+        var newImage = new MemoryStream();
+        img.SaveAsWebp(newImage, new()
+        {
+            SkipMetadata = true,
+            Quality = 40
+        });
+        newImage.Position = 0;
+        return (newImage, "image/webp");
+    }
+
+    public record PageEntry(string Name, string MimeType, long Size, Stream Stream);
 
     public List<ObjectEntry> GetObjects(string shelfName)
     {
