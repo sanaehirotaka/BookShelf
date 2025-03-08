@@ -27,7 +27,14 @@ public class BookShelfController : ControllerBase
     [ResponseCache(Duration = 31536000, Location = ResponseCacheLocation.Any, NoStore = false)]
     public async Task Page(string id, string page)
     {
-        var entry = _bookService.GetPage(id, page);
+        bool isMobile = false;
+        if (Request.Headers.ContainsKey("sec-ch-ua-mobile"))
+        {
+            // sec-ch-ua-mobile ヘッダーが存在する場合
+            string secChUaMobile = Request.Headers["sec-ch-ua-mobile"].ToString();
+            isMobile = secChUaMobile == "?1";
+        }
+        var entry = _bookService.GetPage(id, page, isMobile);
         if (entry == null)
         {
             return;

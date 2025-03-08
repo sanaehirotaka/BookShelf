@@ -91,7 +91,7 @@ public class BookService
         _shelfCache = Cache();
     }
 
-    public PageEntry? GetPage(string id, string page)
+    public PageEntry? GetPage(string id, string page, bool isMobile)
     {
 
         var obj = GetObject(id);
@@ -122,7 +122,7 @@ public class BookService
 
         Stream stream;
 
-        if (zipEntry.Length > MAX_PAGE_SIZE)
+        if (isMobile && zipEntry.Length > MAX_PAGE_SIZE)
         {
             (stream, mimeType) = Stage0(zipEntry);
 
